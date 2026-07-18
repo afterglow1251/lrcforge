@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lrcforge"
+version = "0.0.0"
+description = "Audio -> karaoke LRC generator (Demucs -> LID -> transcription -> forced alignment)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.2",
+    "cyclopts>=3.0",
+    "dishka>=1.4",
+    "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+# Default ML path: torch stack + Demucs + MMS forced aligner. Co-resolves without whisperx.
+ml = [
+    "torch",
+    "torchaudio",
+    "demucs",
+    "ctc-forced-aligner",
+]
+# Apple-Silicon ASR runtime (non-torch, isolates the ASR from the torch conflict).
+mlx = ["mlx-whisper"]
+# Portable ASR runtime (CPU int8) when not on Apple Silicon.
+faster = ["faster-whisper"]
+# Opt-in only, for the M5 aligner bake-off. Aggressively version-pinned — kept isolated.
+whisperx = ["whisperx"]
+# Optional dedicated language-ID model.
+lid = ["speechbrain"]
+# Web surface (lands at M5).
+service = ["fastapi", "uvicorn", "sse-starlette"]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.2",
+    "hypothesis>=6.100",
+    "import-linter>=2.0",
+    "syrupy>=4.6",
+]
+
+[project.scripts]
+lrcforge = "lrcforge.cli.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lrcforge"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# NB: no flake8-type-checking (TC) — pydantic resolves annotations at runtime, so
+# field types must stay as real runtime imports, not moved into TYPE_CHECKING blocks.
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: exercises real ML models (opt-in, excluded by default)"]
+
+[tool.importlinter]
+root_package = "lrcforge"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture (heavy ML imports confined to adapters)"
+type = "layers"
+layers = [
+    "lrcforge.cli",
+    "lrcforge.di",
+    "lrcforge.adapters",
+    "lrcforge.pipeline",
+    "lrcforge.ports",
+    "lrcforge.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain, ports and pipeline stay free of ML/web frameworks"
+type = "forbidden"
+source_modules = ["lrcforge.domain", "lrcforge.ports", "lrcforge.pipeline"]
+forbidden_modules = ["torch", "torchaudio", "demucs", "mlx_whisper", "whisperx", "fastapi"]

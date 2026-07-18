@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Envs / tooling caches
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# Test snapshots are committed; generated audio/LRC outputs are not
+/tmp_out/
+*.wav
+*.lrc
+
+# macOS
+.DS_Store
+
+# Model weight caches (Demucs / Whisper / MMS)
+.cache/
