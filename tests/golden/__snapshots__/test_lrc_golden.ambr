@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: test_enhanced_lrc_golden
+  '''
+  [la:en]
+  [re:lrcforge]
+  [by:auto-transcribed draft - needs review]
+  [00:00.00]<00:00.00>never <00:01.20>gonna <00:02.40>give
+  [01:01.05]<01:01.05>you <01:01.60>up
+  
+  '''
+# ---
+# name: test_line_lrc_golden
+  '''
+  [la:en]
+  [re:lrcforge]
+  [by:auto-transcribed draft - needs review]
+  [00:00.00]never gonna give
+  [01:01.05]you up
+  
+  '''
+# ---
