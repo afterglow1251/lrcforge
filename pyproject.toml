@@ -56,10 +56,23 @@ strict = true
 plugins = ["pydantic.mypy"]
 files = ["src", "tests"]
 
-# Untyped third-party libs (audio/ML) have no stubs. Allowed only in adapters/,
-# which the import-linter contract already fences off from the typed core.
+# Untyped third-party libs (audio/ML) have no stubs and (for the heavy ones) are not
+# installed in the typecheck env. They are used ONLY in adapters/, which the
+# import-linter contract already fences off from the typed core.
 [[tool.mypy.overrides]]
-module = ["soundfile"]
+module = [
+    "soundfile",
+    "torch",
+    "torchaudio",
+    "demucs",
+    "demucs.*",
+    "mlx_whisper",
+    "faster_whisper",
+    "ctc_forced_aligner",
+    "whisperx",
+    "speechbrain",
+    "speechbrain.*",
+]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
