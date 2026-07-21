@@ -14,8 +14,19 @@ from lrcforge.pipeline.options import RunOptions
 from lrcforge.pipeline.orchestrator import AlignPipeline
 from lrcforge.ports.audio_loader import AudioLoader
 from lrcforge.ports.language_detector import LanguageDetector
+from lrcforge.ports.lyrics_provider import LyricsProvider
 
 app = App(name="lrcforge", help="Audio -> karaoke LRC generator.")
+
+
+def _lyrics_override(lyrics_file: Path | None) -> LyricsProvider | None:
+    """Build the authoritative user-text provider (CLI is above adapters, so it may
+    import the concrete adapter and pass it as the port)."""
+    if lyrics_file is None:
+        return None
+    from lrcforge.adapters.lyrics.userfile_provider import UserFileLyricsProvider
+
+    return UserFileLyricsProvider(lyrics_file)
 
 
 @app.command
@@ -26,6 +37,7 @@ def align(
     lang: str | None = None,
     no_separation: bool = False,
     line: bool = False,
+    lyrics_file: Path | None = None,
     fake: bool = False,
 ) -> None:
     """Generate a karaoke LRC for AUDIO.
@@ -37,13 +49,14 @@ def align(
     lang: force the language (e.g. uk/ru/en) instead of auto-detecting.
     no_separation: skip vocal separation.
     line: emit line-level LRC instead of word-level (A2).
+    lyrics_file: align this known text instead of transcribing (authoritative).
     fake: use the zero-model fake pipeline (dummy output; for smoke-testing the plumbing).
     """
     container = build_container(fakes=fake)
     try:
         pipeline = container.get(AlignPipeline)
         opts = RunOptions(separate=not no_separation, forced_lang=lang, enhanced=not line)
-        doc = pipeline.run(audio, opts)
+        doc = pipeline.run(audio, opts, lyrics=_lyrics_override(lyrics_file))
         text = render_lrc(doc, enhanced=not line)
     finally:
         container.close()
@@ -67,6 +80,38 @@ def lang(audio: Path, *, fake: bool = False) -> None:
     finally:
         container.close()
     print(f"{result.lang} ({result.confidence:.2f})")
+
+
+@app.command
+def batch(
+    folder: Path,
+    *,
+    pattern: str = "*.mp3",
+    lang: str | None = None,
+    no_separation: bool = False,
+    line: bool = False,
+    fake: bool = False,
+) -> None:
+    """Align every audio file in FOLDER matching PATTERN, writing a sidecar `.lrc`.
+
+    The models load once and are reused across files (the pipeline is an APP singleton).
+    """
+    files = sorted(folder.glob(pattern))
+    if not files:
+        print(f"no files matching {pattern!r} in {folder}")
+        return
+
+    container = build_container(fakes=fake)
+    try:
+        pipeline = container.get(AlignPipeline)
+        opts = RunOptions(separate=not no_separation, forced_lang=lang, enhanced=not line)
+        for audio in files:
+            doc = pipeline.run(audio, opts)
+            out = audio.with_suffix(".lrc")
+            out.write_text(render_lrc(doc, enhanced=not line), encoding="utf-8")
+            print(f"{audio.name} -> {out.name}")
+    finally:
+        container.close()
 
 
 @app.command
