@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from dishka import Provider, Scope, provide
 
+from lrcforge.adapters.alignment.mms_aligner import MmsForcedAligner
+from lrcforge.adapters.audio.soundfile_loader import SoundfileAudioLoader
 from lrcforge.adapters.fakes.stages import (
     FakeAligner,
     FakeAudioLoader,
@@ -13,7 +15,11 @@ from lrcforge.adapters.fakes.stages import (
     FakeTranscriptionProvider,
     LogProgressReporter,
 )
+from lrcforge.adapters.language.whisper_lid import WhisperLanguageDetector
 from lrcforge.adapters.lrc.enhanced_lrc_writer import EnhancedLrcWriter
+from lrcforge.adapters.lyrics.faster_whisper_provider import FasterWhisperLyricsProvider
+from lrcforge.adapters.lyrics.mlx_provider import MlxWhisperLyricsProvider
+from lrcforge.adapters.separation.demucs_separator import DemucsSeparator
 from lrcforge.config import Settings
 from lrcforge.pipeline.orchestrator import AlignPipeline
 from lrcforge.ports.aligner import ForcedAligner
@@ -71,6 +77,37 @@ class FakeStagesProvider(Provider):
     @provide
     def aligner(self) -> ForcedAligner:
         return FakeAligner()
+
+
+class RealStagesProvider(Provider):
+    """Binds the ML ports to real adapters. Construction is lazy (no models load here),
+    so building the container never imports torch — models load on first stage call."""
+
+    scope = Scope.APP
+
+    @provide
+    def loader(self) -> AudioLoader:
+        return SoundfileAudioLoader()
+
+    @provide
+    def separator(self, settings: Settings) -> SourceSeparator:
+        return DemucsSeparator(device=settings.device)
+
+    @provide
+    def detector(self, settings: Settings) -> LanguageDetector:
+        return WhisperLanguageDetector(model_name=settings.lid_model, device=settings.device)
+
+    @provide
+    def lyrics(self, settings: Settings) -> LyricsProvider:
+        if settings.transcriber == "mlx":
+            return MlxWhisperLyricsProvider(model_repo=settings.mlx_model)
+        return FasterWhisperLyricsProvider(model_name=settings.faster_model, device=settings.device)
+
+    @provide
+    def aligner(self, settings: Settings) -> ForcedAligner:
+        if settings.aligner != "mms":
+            raise NotImplementedError(f"aligner {settings.aligner!r} not implemented (use 'mms')")
+        return MmsForcedAligner(device=settings.device)
 
 
 class PipelineProvider(Provider):

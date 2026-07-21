@@ -26,6 +26,7 @@ def align(
     lang: str | None = None,
     no_separation: bool = False,
     line: bool = False,
+    fake: bool = False,
 ) -> None:
     """Generate a karaoke LRC for AUDIO.
 
@@ -36,8 +37,9 @@ def align(
     lang: force the language (e.g. uk/ru/en) instead of auto-detecting.
     no_separation: skip vocal separation.
     line: emit line-level LRC instead of word-level (A2).
+    fake: use the zero-model fake pipeline (dummy output; for smoke-testing the plumbing).
     """
-    container = build_container()
+    container = build_container(fakes=fake)
     try:
         pipeline = container.get(AlignPipeline)
         opts = RunOptions(separate=not no_separation, forced_lang=lang, enhanced=not line)
@@ -54,9 +56,9 @@ def align(
 
 
 @app.command
-def lang(audio: Path) -> None:
+def lang(audio: Path, *, fake: bool = False) -> None:
     """Detect and print the language of AUDIO."""
-    container = build_container()
+    container = build_container(fakes=fake)
     try:
         loader = container.get(AudioLoader)
         detector = container.get(LanguageDetector)
