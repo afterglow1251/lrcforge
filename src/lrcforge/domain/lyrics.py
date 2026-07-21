@@ -6,6 +6,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
+from lrcforge.domain._types import Confidence
+
 
 class LyricsSource(StrEnum):
     ASR = "asr"  # transcribed — a draft, needs review
@@ -31,5 +33,5 @@ class LyricsDraft(BaseModel):
     lines: tuple[LyricLine, ...]
     lang: str
     source: LyricsSource
-    confidence: float | None = None  # None for authoritative USER text
+    confidence: Confidence | None = None  # None for authoritative USER text
     needs_review: bool

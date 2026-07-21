@@ -6,6 +6,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
+from lrcforge.domain._types import Fraction
+
 
 class Stage(StrEnum):
     LOAD = "load"
@@ -21,5 +23,5 @@ class ProgressEvent(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     stage: Stage
-    pct: float
+    pct: Fraction
     message: str

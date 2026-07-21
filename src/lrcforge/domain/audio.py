@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PositiveInt
+
+from lrcforge.domain._types import Seconds
 
 
 class AudioRef(BaseModel):
@@ -15,9 +17,9 @@ class AudioRef(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     path: Path
-    sample_rate: int
-    channels: int
-    duration_s: float
+    sample_rate: PositiveInt
+    channels: PositiveInt
+    duration_s: Seconds
 
 
 class VocalStem(BaseModel):

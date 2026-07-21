@@ -4,12 +4,23 @@ model path not exercised in CI."""
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Iterable
+from typing import Protocol
 
 from lrcforge.adapters.lyrics._parse import segments_to_draft
 from lrcforge.domain.audio import VocalStem
 from lrcforge.domain.errors import TranscriptionError
 from lrcforge.domain.lyrics import LyricsDraft
+
+
+class _FwSegment(Protocol):
+    text: str
+
+
+class _FwModel(Protocol):
+    """The faster-whisper surface we use (avoids a leaked Any)."""
+
+    def transcribe(self, path: str, *, language: str) -> tuple[Iterable[_FwSegment], object]: ...
 
 
 class FasterWhisperLyricsProvider:
@@ -19,16 +30,18 @@ class FasterWhisperLyricsProvider:
         self._model_name = model_name
         self._device = device
         self._compute_type = compute_type
-        self._model: Any = None
+        self._model: _FwModel | None = None
 
-    def _ensure_model(self) -> Any:
+    def _ensure_model(self) -> _FwModel:
         if self._model is None:
             from faster_whisper import WhisperModel  # lazy
 
             self._model = WhisperModel(
                 self._model_name, device=self._device, compute_type=self._compute_type
             )
-        return self._model
+        model = self._model
+        assert model is not None
+        return model
 
     def fetch(self, stem: VocalStem, lang: str) -> LyricsDraft:
         try:

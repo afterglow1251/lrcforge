@@ -7,7 +7,8 @@ a first real run. The re-grouping of aligned words into lines is pure and unit-t
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Protocol, TypedDict
 
 from lrcforge.adapters.alignment._regroup import iso3, regroup_words
 from lrcforge.domain.alignment import AlignedLyrics, AlignedWord
@@ -16,19 +17,37 @@ from lrcforge.domain.errors import AlignmentError
 from lrcforge.domain.lyrics import LyricsDraft
 
 
+class _AlignModel(Protocol):
+    """The ctc-forced-aligner model surface we use (avoids a leaked Any)."""
+
+    dtype: object
+    device: object
+
+
+class _WordTs(TypedDict):
+    """Shape of one entry returned by ctc-forced-aligner's postprocess_results."""
+
+    text: str
+    start: float
+    end: float
+    score: float | None
+
+
 class MmsForcedAligner:
     def __init__(self, device: str = "auto", batch_size: int = 16) -> None:
         self._device = "cpu" if device == "auto" else device
         self._batch_size = batch_size
-        self._model: Any = None
-        self._tokenizer: Any = None
+        self._model: _AlignModel | None = None
+        self._tokenizer: object = None
 
-    def _ensure_model(self) -> tuple[Any, Any]:
+    def _ensure_model(self) -> tuple[_AlignModel, object]:
         if self._model is None:
             from ctc_forced_aligner import load_alignment_model  # lazy
 
             self._model, self._tokenizer = load_alignment_model(self._device)
-        return self._model, self._tokenizer
+        model = self._model
+        assert model is not None
+        return model, self._tokenizer
 
     def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
         try:
@@ -50,17 +69,12 @@ class MmsForcedAligner:
             )
             segments, scores, blank_id = get_alignments(emissions, tokens_starred, tokenizer)
             spans = get_spans(tokens_starred, segments, blank_id)
-            word_ts = postprocess_results(text_starred, spans, stride, scores)
+            word_ts: Sequence[_WordTs] = postprocess_results(text_starred, spans, stride, scores)
         except (RuntimeError, OSError, ValueError, KeyError) as exc:
             raise AlignmentError(f"alignment failed for {stem.audio.path}: {exc}") from exc
 
         flat = [
-            AlignedWord(
-                text=str(w["text"]),
-                start=float(w["start"]),
-                end=float(w["end"]),
-                score=(float(w["score"]) if w.get("score") is not None else None),
-            )
+            AlignedWord(text=w["text"], start=w["start"], end=w["end"], score=w.get("score"))
             for w in word_ts
         ]
         return AlignedLyrics(

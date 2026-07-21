@@ -6,6 +6,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from lrcforge.domain._types import Seconds
 from lrcforge.domain.lyrics import LyricsSource
 
 
@@ -13,8 +14,8 @@ class AlignedWord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     text: str
-    start: float
-    end: float
+    start: Seconds
+    end: Seconds
     score: float | None = None
 
     @model_validator(mode="after")
@@ -28,8 +29,8 @@ class AlignedLine(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     words: tuple[AlignedWord, ...]
-    start: float
-    end: float
+    start: Seconds
+    end: Seconds
 
     @model_validator(mode="after")
     def _check_monotonic(self) -> Self:

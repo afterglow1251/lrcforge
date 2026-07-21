@@ -7,13 +7,19 @@ not exercised in CI; the windowing + voting are pure and unit-tested."""
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any
+from typing import Protocol
 
 from lrcforge.domain.audio import VocalStem
 from lrcforge.domain.errors import LanguageDetectionError
 from lrcforge.domain.language import LanguageResult, WindowVote
 
 _SR = 16000
+
+
+class _LidModel(Protocol):
+    """The faster-whisper surface we use for LID (avoids a leaked Any)."""
+
+    def detect_language(self, audio: object) -> tuple[str, float, object]: ...
 
 
 def plan_windows(
@@ -58,14 +64,16 @@ class WhisperLanguageDetector:
         self._model_name = model_name
         self._device = device
         self._windows = windows
-        self._model: Any = None
+        self._model: _LidModel | None = None
 
-    def _ensure_model(self) -> Any:
+    def _ensure_model(self) -> _LidModel:
         if self._model is None:
             from faster_whisper import WhisperModel  # lazy
 
             self._model = WhisperModel(self._model_name, device=self._device)
-        return self._model
+        model = self._model
+        assert model is not None
+        return model
 
     def detect(self, stem: VocalStem) -> LanguageResult:
         try:
@@ -76,7 +84,7 @@ class WhisperLanguageDetector:
             votes: list[WindowVote] = []
             for start, end, start_s in plan_windows(len(audio), n=self._windows):
                 lang, prob, _ = model.detect_language(audio[start:end])
-                votes.append(WindowVote(start_s=start_s, lang=str(lang), confidence=float(prob)))
+                votes.append(WindowVote(start_s=start_s, lang=lang, confidence=prob))
         except (RuntimeError, OSError, ValueError) as exc:
             raise LanguageDetectionError(f"LID failed for {stem.audio.path}: {exc}") from exc
 
