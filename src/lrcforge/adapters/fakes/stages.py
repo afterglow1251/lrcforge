@@ -61,7 +61,12 @@ class FakeTranscriptionProvider:
 class FakeAligner:
     """Spread words evenly across the stem's duration -> monotonic timestamps."""
 
-    def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
+    def align(
+        self,
+        stem: VocalStem,
+        draft: LyricsDraft,
+        on_progress: object = None,
+    ) -> AlignedLyrics:
         total_words = sum(len(line.words) for line in draft.lines)
         duration = stem.audio.duration_s
         dt = duration / total_words if total_words else 0.0

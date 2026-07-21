@@ -11,6 +11,7 @@ from lrcforge.domain.alignment import AlignedLine, AlignedLyrics, AlignedWord
 from lrcforge.domain.audio import VocalStem
 from lrcforge.domain.errors import AlignmentError
 from lrcforge.domain.lyrics import LyricsDraft
+from lrcforge.ports.aligner import AlignProgress
 
 
 class _MlxWord(TypedDict):
@@ -24,16 +25,24 @@ class MlxWhisperAligner:
     def __init__(self, model_repo: str = "mlx-community/whisper-large-v3-turbo") -> None:
         self._model_repo = model_repo
 
-    def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
+    def align(
+        self, stem: VocalStem, draft: LyricsDraft, on_progress: AlignProgress | None = None
+    ) -> AlignedLyrics:
         try:
             import mlx_whisper  # lazy
 
+            # mlx transcribe is one blocking call (download + GPU inference), so the best we
+            # can do is flag the phase — most of the wait on a first run is the model download.
+            if on_progress is not None:
+                on_progress(0.05, "loading model on GPU (first run downloads ~1 GB)")
             result = mlx_whisper.transcribe(
                 str(stem.audio.path),
                 path_or_hf_repo=self._model_repo,
                 language=(draft.lang or None),
                 word_timestamps=True,
             )
+            if on_progress is not None:
+                on_progress(0.95, "building words")
             lines: list[AlignedLine] = []
             for segment in result["segments"]:
                 words: list[AlignedWord] = []

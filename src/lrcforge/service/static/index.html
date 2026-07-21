@@ -65,11 +65,12 @@ const drop = $("drop"), fileInput = $("file"), panel = $("panel");
 drop.addEventListener("drop", ev => { if (ev.dataTransfer.files[0]) start(ev.dataTransfer.files[0]); });
 fileInput.addEventListener("change", () => { if (fileInput.files[0]) start(fileInput.files[0]); });
 
-function renderStages(active) {
+function renderStages(active, message) {
   $("stages").innerHTML = STAGES.map(s => {
     const idx = STAGES.indexOf(s), a = STAGES.indexOf(active);
     const cls = idx < a ? "done" : idx === a ? "active" : "";
-    const mark = idx < a ? "✓" : idx === a ? "…" : "";
+    let mark = idx < a ? "✓" : idx === a ? "…" : "";
+    if (idx === a && message) mark = message;   // show the live message for the active stage
     return `<div class="stage ${cls}"><span>${s}</span><span>${mark}</span></div>`;
   }).join("");
 }
@@ -90,7 +91,7 @@ async function start(file) {
   const { job_id } = await res.json();
 
   const es = new EventSource(`/jobs/${job_id}/events`);
-  es.addEventListener("progress", e => renderStages(JSON.parse(e.data).stage));
+  es.addEventListener("progress", e => { const d = JSON.parse(e.data); renderStages(d.stage, d.message); });
   es.addEventListener("done", async () => { es.close(); renderStages("done"); await load(job_id); });
   es.addEventListener("failed", async () => { es.close(); await load(job_id); }); // load() shows job.error
   es.onerror = () => {}; // transient blips: EventSource auto-reconnects; stream closes cleanly on done/failed

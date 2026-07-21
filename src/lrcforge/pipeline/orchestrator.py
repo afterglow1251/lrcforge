@@ -18,6 +18,10 @@ from lrcforge.ports.progress import ProgressReporter
 from lrcforge.ports.separator import SourceSeparator
 
 
+def _clamp(pct: float) -> float:
+    return max(0.0, min(1.0, pct))
+
+
 class AlignPipeline:
     def __init__(
         self,
@@ -67,8 +71,12 @@ class AlignPipeline:
         self._emit(Stage.TRANSCRIBE, 0.5, "acquiring lyrics")
         draft = provider.fetch(stem, lang)
 
-        self._emit(Stage.ALIGN, 0.75, "forced alignment")
-        aligned = self._aligner.align(stem, draft)
+        self._emit(Stage.ALIGN, 0.75, "aligning")
+        aligned = self._aligner.align(
+            stem,
+            draft,
+            on_progress=lambda pct, msg: self._emit(Stage.ALIGN, 0.75 + 0.2 * _clamp(pct), msg),
+        )
 
         self._emit(Stage.WRITE, 0.95, "building LRC")
         doc = self._writer.to_document(aligned)

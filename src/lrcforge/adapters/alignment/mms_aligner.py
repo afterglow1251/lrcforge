@@ -15,6 +15,7 @@ from lrcforge.domain.alignment import AlignedLyrics, AlignedWord
 from lrcforge.domain.audio import VocalStem
 from lrcforge.domain.errors import AlignmentError
 from lrcforge.domain.lyrics import LyricsDraft
+from lrcforge.ports.aligner import AlignProgress
 
 
 class _AlignModel(Protocol):
@@ -49,8 +50,12 @@ class MmsForcedAligner:
         assert model is not None
         return model, self._tokenizer
 
-    def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
+    def align(
+        self, stem: VocalStem, draft: LyricsDraft, on_progress: AlignProgress | None = None
+    ) -> AlignedLyrics:
         try:
+            if on_progress is not None:
+                on_progress(0.0, "aligning")
             from ctc_forced_aligner import (  # lazy
                 generate_emissions,
                 get_alignments,

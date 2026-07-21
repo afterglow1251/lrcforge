@@ -14,6 +14,7 @@ from lrcforge.domain.alignment import AlignedLine, AlignedLyrics, AlignedWord
 from lrcforge.domain.audio import VocalStem
 from lrcforge.domain.errors import AlignmentError
 from lrcforge.domain.lyrics import LyricsDraft
+from lrcforge.ports.aligner import AlignProgress
 
 
 class _FwWord(Protocol):
@@ -24,6 +25,7 @@ class _FwWord(Protocol):
 
 
 class _FwSegment(Protocol):
+    end: float
     words: list[_FwWord] | None
 
 
@@ -53,12 +55,17 @@ class WhisperForcedAligner:
         assert model is not None
         return model
 
-    def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
+    def align(
+        self, stem: VocalStem, draft: LyricsDraft, on_progress: AlignProgress | None = None
+    ) -> AlignedLyrics:
         try:
+            if on_progress is not None:
+                on_progress(0.0, "loading model (first run downloads)")
             model = self._ensure_model()
             segments, _info = model.transcribe(
                 str(stem.audio.path), language=(draft.lang or None), word_timestamps=True
             )
+            duration = stem.audio.duration_s
             lines: list[AlignedLine] = []
             for segment in segments:
                 words: list[AlignedWord] = []
@@ -79,6 +86,9 @@ class WhisperForcedAligner:
                     lines.append(
                         AlignedLine(words=tuple(words), start=words[0].start, end=words[-1].end)
                     )
+                if on_progress is not None and duration > 0:
+                    pct = min(float(segment.end) / duration, 1.0)
+                    on_progress(pct, f"transcribing {int(pct * 100)}%")
         except (RuntimeError, OSError, ValueError, ImportError) as exc:
             raise AlignmentError(f"alignment failed for {stem.audio.path}: {exc}") from exc
 
