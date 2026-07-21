@@ -40,6 +40,7 @@ class MlxWhisperAligner:
                 path_or_hf_repo=self._model_repo,
                 language=(draft.lang or None),
                 word_timestamps=True,
+                condition_on_previous_text=False,  # curb repeated-word hallucinations on singing
             )
             if on_progress is not None:
                 on_progress(0.95, "building words")

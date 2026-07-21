@@ -31,7 +31,13 @@ class _FwSegment(Protocol):
 
 class _FwModel(Protocol):
     def transcribe(
-        self, path: str, *, language: str | None, word_timestamps: bool
+        self,
+        path: str,
+        *,
+        language: str | None,
+        word_timestamps: bool,
+        vad_filter: bool,
+        condition_on_previous_text: bool,
     ) -> tuple[Iterable[_FwSegment], object]: ...
 
 
@@ -63,7 +69,11 @@ class WhisperForcedAligner:
                 on_progress(0.0, "loading model (first run downloads)")
             model = self._ensure_model()
             segments, _info = model.transcribe(
-                str(stem.audio.path), language=(draft.lang or None), word_timestamps=True
+                str(stem.audio.path),
+                language=(draft.lang or None),
+                word_timestamps=True,
+                vad_filter=True,  # skip instrumental gaps -> far fewer hallucinated repeats
+                condition_on_previous_text=False,  # stop a bad segment poisoning the next
             )
             duration = stem.audio.duration_s
             lines: list[AlignedLine] = []
