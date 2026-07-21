@@ -6,6 +6,7 @@ from __future__ import annotations
 from dishka import Provider, Scope, provide
 
 from lrcforge.adapters.alignment.mms_aligner import MmsForcedAligner
+from lrcforge.adapters.alignment.whisper_aligner import WhisperForcedAligner
 from lrcforge.adapters.audio.soundfile_loader import SoundfileAudioLoader
 from lrcforge.adapters.fakes.stages import (
     FakeAligner,
@@ -17,6 +18,7 @@ from lrcforge.adapters.fakes.stages import (
 )
 from lrcforge.adapters.language.whisper_lid import WhisperLanguageDetector
 from lrcforge.adapters.lrc.enhanced_lrc_writer import EnhancedLrcWriter
+from lrcforge.adapters.lyrics.deferred_provider import DeferredLyricsProvider
 from lrcforge.adapters.lyrics.faster_whisper_provider import FasterWhisperLyricsProvider
 from lrcforge.adapters.lyrics.mlx_provider import MlxWhisperLyricsProvider
 from lrcforge.adapters.separation.demucs_separator import DemucsSeparator
@@ -94,15 +96,20 @@ class RealStagesProvider(Provider):
 
     @provide
     def lyrics(self, settings: Settings) -> LyricsProvider:
+        # The whisper aligner transcribes + times in one pass, so no separate transcription.
+        if settings.aligner == "whisper":
+            return DeferredLyricsProvider()
         if settings.transcriber == "mlx":
             return MlxWhisperLyricsProvider(model_repo=settings.mlx_model)
         return FasterWhisperLyricsProvider(model_name=settings.faster_model, device=settings.device)
 
     @provide
     def aligner(self, settings: Settings) -> ForcedAligner:
-        if settings.aligner != "mms":
-            raise NotImplementedError(f"aligner {settings.aligner!r} not implemented (use 'mms')")
-        return MmsForcedAligner(device=settings.device)
+        if settings.aligner == "whisper":
+            return WhisperForcedAligner(model_name=settings.faster_model, device=settings.device)
+        if settings.aligner == "mms":
+            return MmsForcedAligner(device=settings.device)
+        raise NotImplementedError(f"aligner {settings.aligner!r} not implemented")
 
 
 class CliRuntimeProvider(Provider):

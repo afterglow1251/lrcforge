@@ -1671,9 +1671,6 @@ dev = [
     { name = "ruff" },
     { name = "syrupy" },
 ]
-faster = [
-    { name = "faster-whisper" },
-]
 lid = [
     { name = "speechbrain" },
 ]
@@ -1681,6 +1678,7 @@ ml = [
     { name = "ctc-forced-aligner" },
     { name = "demucs", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "demucs", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "faster-whisper" },
     { name = "torch" },
     { name = "torchaudio" },
 ]
@@ -1704,7 +1702,7 @@ requires-dist = [
     { name = "demucs", marker = "extra == 'ml'" },
     { name = "dishka", specifier = ">=1.4" },
     { name = "fastapi", marker = "extra == 'service'", specifier = ">=0.110" },
-    { name = "faster-whisper", marker = "extra == 'faster'" },
+    { name = "faster-whisper", marker = "extra == 'ml'" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.100" },
     { name = "import-linter", marker = "extra == 'dev'", specifier = ">=2.0" },
@@ -1725,7 +1723,7 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'service'", specifier = ">=0.29" },
     { name = "whisperx", marker = "extra == 'whisperx'" },
 ]
-provides-extras = ["ml", "mlx", "faster", "whisperx", "lid", "service", "dev"]
+provides-extras = ["ml", "mlx", "whisperx", "lid", "service", "dev"]
 
 [[package]]
 name = "mako"

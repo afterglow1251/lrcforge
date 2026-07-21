@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Device = Literal["auto", "cpu", "mps", "cuda"]
 Transcriber = Literal["faster", "mlx"]
-Aligner = Literal["mms", "whisperx"]
+Aligner = Literal["whisper", "mms", "whisperx"]
 
 
 class Settings(BaseSettings):
@@ -19,5 +19,7 @@ class Settings(BaseSettings):
     faster_model: str = "large-v3"
     mlx_model: str = "mlx-community/whisper-large-v3"
     lid_model: str = "small"
-    aligner: Aligner = "mms"  # mms (multilingual) | whisperx (not yet implemented)
+    # whisper: word timestamps straight from faster-whisper (robust default).
+    # mms: forced alignment of external text (for --lyrics-file; WIP against the ONNX API).
+    aligner: Aligner = "whisper"
     default_lang: str = "auto"
