@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     device: Device = "auto"
     transcriber: Transcriber = "faster"  # faster (portable) | mlx (Apple GPU)
     faster_model: str = "large-v3"
-    mlx_model: str = "mlx-community/whisper-large-v3"
+    mlx_model: str = "mlx-community/whisper-large-v3-turbo"
     lid_model: str = "small"
     # whisper: word timestamps straight from faster-whisper (robust default).
     # mms: forced alignment of external text (for --lyrics-file; WIP against the ONNX API).

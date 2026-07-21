@@ -21,7 +21,7 @@ class _MlxWord(TypedDict):
 
 
 class MlxWhisperAligner:
-    def __init__(self, model_repo: str = "mlx-community/whisper-large-v3") -> None:
+    def __init__(self, model_repo: str = "mlx-community/whisper-large-v3-turbo") -> None:
         self._model_repo = model_repo
 
     def align(self, stem: VocalStem, draft: LyricsDraft) -> AlignedLyrics:
