@@ -1,0 +1,18 @@
+# render.com blueprint. NOTE: `plan: free` will NOT work — the ML stack needs RAM + disk
+# for multi-GB model weights. Use a paid instance (>= ~2 GB RAM), or deploy in `--fake`
+# mode for a UI-only demo. See DEPLOY.md.
+services:
+  - type: web
+    name: lrcforge
+    runtime: docker
+    plan: standard
+    healthCheckPath: /
+    envVars:
+      - key: LRCFORGE_DEVICE
+        value: cpu
+      - key: LRCFORGE_TRANSCRIBER
+        value: faster
+      - key: LRCFORGE_FASTER_MODEL
+        value: small
+      - key: LRCFORGE_LID_MODEL
+        value: small
