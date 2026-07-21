@@ -68,9 +68,10 @@ fileInput.addEventListener("change", () => { if (fileInput.files[0]) start(fileI
 function renderStages(active, message) {
   $("stages").innerHTML = STAGES.map(s => {
     const idx = STAGES.indexOf(s), a = STAGES.indexOf(active);
-    const cls = idx < a ? "done" : idx === a ? "active" : "";
-    let mark = idx < a ? "✓" : idx === a ? "…" : "";
-    if (idx === a && message) mark = message;   // show the live message for the active stage
+    const finished = active === "done";
+    const cls = idx < a || finished ? "done" : idx === a ? "active" : "";
+    let mark = idx < a || finished ? "✓" : idx === a ? "…" : "";
+    if (idx === a && !finished && message) mark = message;  // live message on the active stage
     return `<div class="stage ${cls}"><span>${s}</span><span>${mark}</span></div>`;
   }).join("");
 }
