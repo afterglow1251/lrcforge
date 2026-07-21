@@ -1,5 +1,5 @@
-"""dishka providers. M0 uses a single Scope.APP; the REQUEST scope (per web job) and
-real ML adapters arrive with M2+/M5 (see PLAN.md §5, §8)."""
+"""dishka providers. Construction of the ML adapters is lazy (no models load here), so
+building any container never imports torch — models load on first stage call."""
 
 from __future__ import annotations
 
@@ -39,8 +39,8 @@ class ConfigProvider(Provider):
         return Settings()
 
 
-class CoreProvider(Provider):
-    """Pure, non-ML components — real in every configuration."""
+class WriterProvider(Provider):
+    """The pure, non-ML LRC writer — real in every configuration."""
 
     scope = Scope.APP
 
@@ -48,13 +48,9 @@ class CoreProvider(Provider):
     def writer(self) -> LrcWriter:
         return EnhancedLrcWriter()
 
-    @provide
-    def progress(self) -> ProgressReporter:
-        return LogProgressReporter()
-
 
 class FakeStagesProvider(Provider):
-    """Binds the ML ports to fakes (M0 + tests) — zero models loaded."""
+    """Binds the ML ports to fakes (M0 + tests + `--fake`) — zero models loaded."""
 
     scope = Scope.APP
 
@@ -80,8 +76,7 @@ class FakeStagesProvider(Provider):
 
 
 class RealStagesProvider(Provider):
-    """Binds the ML ports to real adapters. Construction is lazy (no models load here),
-    so building the container never imports torch — models load on first stage call."""
+    """Binds the ML ports to real adapters (Demucs, LID, Whisper, MMS)."""
 
     scope = Scope.APP
 
@@ -110,8 +105,14 @@ class RealStagesProvider(Provider):
         return MmsForcedAligner(device=settings.device)
 
 
-class PipelineProvider(Provider):
+class CliRuntimeProvider(Provider):
+    """CLI runtime: a plain APP-scoped progress reporter + pipeline (no per-job scope)."""
+
     scope = Scope.APP
+
+    @provide
+    def progress(self) -> ProgressReporter:
+        return LogProgressReporter()
 
     @provide
     def pipeline(

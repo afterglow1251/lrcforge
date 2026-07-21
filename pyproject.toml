@@ -33,8 +33,8 @@ faster = ["faster-whisper"]
 whisperx = ["whisperx"]
 # Optional dedicated language-ID model.
 lid = ["speechbrain"]
-# Web surface (lands at M5).
-service = ["fastapi", "uvicorn", "sse-starlette"]
+# Web surface (M5).
+service = ["fastapi>=0.110", "uvicorn>=0.29", "sse-starlette>=2.1", "python-multipart>=0.0.9"]
 dev = [
     "ruff>=0.6",
     "mypy>=1.11",
@@ -42,6 +42,7 @@ dev = [
     "hypothesis>=6.100",
     "import-linter>=2.0",
     "syrupy>=4.6",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
@@ -102,8 +103,10 @@ name = "Layered architecture (heavy ML imports confined to adapters)"
 type = "layers"
 layers = [
     "lrcforge.cli",
+    "lrcforge.service",
     "lrcforge.di",
     "lrcforge.adapters",
+    "lrcforge.jobs",
     "lrcforge.pipeline",
     "lrcforge.ports",
     "lrcforge.domain",

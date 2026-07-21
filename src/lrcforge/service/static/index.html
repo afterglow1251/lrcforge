@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>lrcforge</title>
+<style>
+  :root { color-scheme: light dark; --fg:#e8e8ea; --bg:#111214; --dim:#8a8d93; --accent:#7cc; --hi:#ffd85a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg);
+         display:flex; flex-direction:column; align-items:center; padding:2rem 1rem; }
+  h1 { font-weight:650; letter-spacing:.02em; margin:.2rem 0 .1rem; }
+  .sub { color:var(--dim); margin:0 0 1.5rem; font-size:.9rem; }
+  #drop { width:min(680px,100%); border:1.5px dashed #3a3d44; border-radius:14px; padding:2rem;
+          text-align:center; cursor:pointer; transition:border-color .15s,background .15s; }
+  #drop.hover { border-color:var(--accent); background:#181a1d; }
+  #drop input { display:none; }
+  .row { display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; margin:1rem 0; color:var(--dim); font-size:.88rem; }
+  .row label { display:flex; gap:.35rem; align-items:center; }
+  #panel { width:min(680px,100%); margin-top:1.5rem; display:none; }
+  #stages { display:flex; flex-direction:column; gap:.3rem; margin-bottom:1rem; }
+  .stage { display:flex; justify-content:space-between; color:var(--dim); font-size:.85rem; }
+  .stage.active { color:var(--accent); }
+  .stage.done { color:var(--fg); }
+  audio { width:100%; margin:.5rem 0 1rem; }
+  #lyrics { max-height:340px; overflow:auto; border-top:1px solid #26282d; padding-top:1rem; }
+  #lyrics .ln { padding:.15rem .4rem; border-radius:6px; color:var(--dim); transition:color .1s; }
+  #lyrics .ln.cur { color:var(--hi); background:#1c1e22; font-weight:600; }
+  .badge { display:inline-block; font-size:.72rem; padding:.1rem .5rem; border-radius:999px;
+           background:#3a2f10; color:var(--hi); margin-left:.5rem; }
+  .err { color:#ff8080; }
+  button { font:inherit; }
+</style>
+</head>
+<body>
+  <h1>lrcforge</h1>
+  <p class="sub">drop an audio file &rarr; karaoke <code>.lrc</code></p>
+
+  <label id="drop">
+    <input type="file" id="file" accept="audio/*" />
+    <div id="dropText">Click or drop an audio file here</div>
+  </label>
+
+  <div class="row">
+    <label><input type="checkbox" id="noSep" /> skip separation</label>
+    <label><input type="checkbox" id="lineLevel" /> line-level</label>
+    <label>lang <input type="text" id="lang" placeholder="auto" size="5"
+           style="background:#191b1e;color:var(--fg);border:1px solid #333;border-radius:5px;padding:.1rem .3rem" /></label>
+  </div>
+
+  <div id="panel">
+    <div id="stages"></div>
+    <audio id="player" controls></audio>
+    <div id="meta"></div>
+    <div id="lyrics"></div>
+  </div>
+
+<script>
+const STAGES = ["load","separate","detect_lang","transcribe","align","write","done"];
+const $ = (id) => document.getElementById(id);
+const drop = $("drop"), fileInput = $("file"), panel = $("panel");
+
+["dragenter","dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("hover"); }));
+["dragleave","drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("hover"); }));
+drop.addEventListener("drop", ev => { if (ev.dataTransfer.files[0]) start(ev.dataTransfer.files[0]); });
+fileInput.addEventListener("change", () => { if (fileInput.files[0]) start(fileInput.files[0]); });
+
+function renderStages(active) {
+  $("stages").innerHTML = STAGES.map(s => {
+    const idx = STAGES.indexOf(s), a = STAGES.indexOf(active);
+    const cls = idx < a ? "done" : idx === a ? "active" : "";
+    const mark = idx < a ? "✓" : idx === a ? "…" : "";
+    return `<div class="stage ${cls}"><span>${s}</span><span>${mark}</span></div>`;
+  }).join("");
+}
+
+async function start(file) {
+  panel.style.display = "block";
+  $("meta").innerHTML = ""; $("lyrics").innerHTML = "";
+  renderStages("load");
+  $("player").src = URL.createObjectURL(file);
+
+  const fd = new FormData();
+  fd.append("audio", file);
+  if ($("noSep").checked) fd.append("no_separation", "true");
+  if ($("lineLevel").checked) fd.append("line", "true");
+  if ($("lang").value.trim()) fd.append("lang", $("lang").value.trim());
+
+  const res = await fetch("/jobs", { method: "POST", body: fd });
+  const { job_id } = await res.json();
+
+  const es = new EventSource(`/jobs/${job_id}/events`);
+  es.addEventListener("progress", e => renderStages(JSON.parse(e.data).stage));
+  es.addEventListener("error", () => { es.close(); $("meta").innerHTML = `<span class="err">stream error</span>`; });
+  es.addEventListener("done", async () => { es.close(); renderStages("done"); await load(job_id); });
+  es.addEventListener("error", () => es.close());
+  // custom named event "error" from server closes too; also handle job failure via "error" payload
+}
+
+async function load(job_id) {
+  const job = await (await fetch(`/jobs/${job_id}`)).json();
+  if (job.error) { $("meta").innerHTML = `<span class="err">${job.error}</span>`; return; }
+  const badge = job.needs_review ? `<span class="badge">draft — needs review</span>` : "";
+  $("meta").innerHTML = `<b>${job.language ?? "?"}</b>${badge}`;
+  renderLyrics(parseLrc(job.lrc || ""));
+}
+
+function parseLrc(text) {
+  const out = [];
+  for (const line of text.split("\n")) {
+    const m = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/);
+    if (!m) continue;
+    const t = parseInt(m[1]) * 60 + parseFloat(m[2]);
+    const body = m[3].replace(/<\d+:\d+(?:\.\d+)?>/g, "").trim(); // strip A2 word tags for display
+    if (body) out.push({ t, body });
+  }
+  return out;
+}
+
+function renderLyrics(lines) {
+  const box = $("lyrics");
+  box.innerHTML = lines.map((l, i) => `<div class="ln" data-i="${i}">${l.body}</div>`).join("");
+  const player = $("player");
+  player.ontimeupdate = () => {
+    let cur = -1;
+    for (let i = 0; i < lines.length; i++) if (lines[i].t <= player.currentTime) cur = i;
+    box.querySelectorAll(".ln").forEach(el => el.classList.toggle("cur", +el.dataset.i === cur));
+    const el = box.querySelector(".ln.cur");
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+}
+</script>
+</body>
+</html>

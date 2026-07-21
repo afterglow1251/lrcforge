@@ -69,5 +69,15 @@ def lang(audio: Path, *, fake: bool = False) -> None:
     print(f"{result.lang} ({result.confidence:.2f})")
 
 
+@app.command
+def serve(host: str = "127.0.0.1", port: int = 8000, fake: bool = False) -> None:
+    """Launch the FastAPI service + karaoke-preview web UI (needs the [service] extra)."""
+    import uvicorn  # lazy: keep fastapi/uvicorn out of the base CLI import
+
+    from lrcforge.service.app_factory import build_web_app
+
+    uvicorn.run(build_web_app(fakes=fake), host=host, port=port)
+
+
 def main() -> None:
     app()
