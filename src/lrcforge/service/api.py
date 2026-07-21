@@ -12,7 +12,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -30,6 +30,10 @@ def create_app(*, runner: JobRunner, store: JobStore) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
         return (_STATIC / "index.html").read_text(encoding="utf-8")
+
+    @app.get("/favicon.ico")
+    async def favicon() -> Response:
+        return Response(status_code=204)
 
     @app.post("/jobs")
     async def create_job(
@@ -70,14 +74,17 @@ def create_app(*, runner: JobRunner, store: JobStore) -> FastAPI:
             while True:
                 job = store.get(jid)
                 if job is None:
-                    yield {"event": "error", "data": json.dumps({"error": "unknown job"})}
+                    yield {"event": "failed", "data": json.dumps({"error": "unknown job"})}
                     return
                 for event in job.events[cursor:]:
                     yield {"event": "progress", "data": event.model_dump_json()}
                 cursor = len(job.events)
                 if job.status in (JobStatus.DONE, JobStatus.ERROR):
+                    # NB: use "failed" (not "error") — "error" collides with the browser
+                    # EventSource's built-in error event.
+                    name = "done" if job.status is JobStatus.DONE else "failed"
                     payload = {"status": job.status.value, "error": job.error}
-                    yield {"event": job.status.value, "data": json.dumps(payload)}
+                    yield {"event": name, "data": json.dumps(payload)}
                     return
                 await asyncio.sleep(0.25)
 

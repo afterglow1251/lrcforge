@@ -55,7 +55,7 @@ class DemucsSeparator:
             vocals = stems["vocals"]
             out_path = self._ensure_workdir() / f"{audio.path.stem}.vocals.wav"
             save_audio(vocals, str(out_path), samplerate=separator.samplerate)
-        except (RuntimeError, OSError, KeyError, ValueError) as exc:
+        except (RuntimeError, OSError, KeyError, ValueError, ImportError) as exc:
             raise SeparationError(f"demucs separation failed for {audio.path}: {exc}") from exc
 
         probed = self._loader.probe(out_path)

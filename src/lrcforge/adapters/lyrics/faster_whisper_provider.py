@@ -48,6 +48,6 @@ class FasterWhisperLyricsProvider:
             model = self._ensure_model()
             segments, _info = model.transcribe(str(stem.audio.path), language=lang)
             seg_dicts = [{"text": segment.text} for segment in segments]
-        except (RuntimeError, OSError, ValueError) as exc:
+        except (RuntimeError, OSError, ValueError, ImportError) as exc:
             raise TranscriptionError(f"transcription failed for {stem.audio.path}: {exc}") from exc
         return segments_to_draft(seg_dicts, lang=lang)

@@ -4,6 +4,7 @@ job) — NOT via the FastAPI request lifecycle, because the job outlives its HTT
 
 from __future__ import annotations
 
+import traceback
 from pathlib import Path
 
 from dishka import Container
@@ -30,6 +31,8 @@ class JobExecutor:
             text = render_lrc(doc, enhanced=opts.enhanced)
             self._store.complete(job_id, text, doc.metadata)
         except LrcforgeError as exc:
+            traceback.print_exc()  # surface the real cause in the server console
             self._store.fail(job_id, str(exc))
         except Exception as exc:  # worker thread must not die silently
+            traceback.print_exc()
             self._store.fail(job_id, f"unexpected error: {exc}")

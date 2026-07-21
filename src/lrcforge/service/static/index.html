@@ -91,10 +91,9 @@ async function start(file) {
 
   const es = new EventSource(`/jobs/${job_id}/events`);
   es.addEventListener("progress", e => renderStages(JSON.parse(e.data).stage));
-  es.addEventListener("error", () => { es.close(); $("meta").innerHTML = `<span class="err">stream error</span>`; });
   es.addEventListener("done", async () => { es.close(); renderStages("done"); await load(job_id); });
-  es.addEventListener("error", () => es.close());
-  // custom named event "error" from server closes too; also handle job failure via "error" payload
+  es.addEventListener("failed", async () => { es.close(); await load(job_id); }); // load() shows job.error
+  es.onerror = () => {}; // transient blips: EventSource auto-reconnects; stream closes cleanly on done/failed
 }
 
 async function load(job_id) {

@@ -19,7 +19,7 @@ _SR = 16000
 class _LidModel(Protocol):
     """The faster-whisper surface we use for LID (avoids a leaked Any)."""
 
-    def detect_language(self, audio: object) -> tuple[str, float, object]: ...
+    def detect_language(self, audio: object) -> tuple[object, ...]: ...
 
 
 def plan_windows(
@@ -83,9 +83,18 @@ class WhisperLanguageDetector:
             audio = decode_audio(str(stem.audio.path), sampling_rate=_SR)
             votes: list[WindowVote] = []
             for start, end, start_s in plan_windows(len(audio), n=self._windows):
-                lang, prob, _ = model.detect_language(audio[start:end])
-                votes.append(WindowVote(start_s=start_s, lang=lang, confidence=prob))
-        except (RuntimeError, OSError, ValueError) as exc:
-            raise LanguageDetectionError(f"LID failed for {stem.audio.path}: {exc}") from exc
+                detected = model.detect_language(audio[start:end])
+                votes.append(
+                    WindowVote(
+                        start_s=start_s,
+                        lang=str(detected[0]),
+                        confidence=float(detected[1]),  # type: ignore[arg-type]
+                    )
+                )
+        except (RuntimeError, OSError, ValueError, ImportError) as exc:
+            raise LanguageDetectionError(
+                f"LID failed for {stem.audio.path}: {exc} "
+                "(faster-whisper is required for language ID — install the [ml] extra)"
+            ) from exc
 
         return aggregate_votes(tuple(votes))

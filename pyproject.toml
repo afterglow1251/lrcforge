@@ -18,17 +18,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Default ML path: torch stack + Demucs + MMS forced aligner. Co-resolves without whisperx.
+# Default ML path: torch stack + Demucs + MMS aligner + faster-whisper (used for both the
+# default transcription backend AND language-ID, which always needs it).
 ml = [
     "torch",
     "torchaudio",
     "demucs",
     "ctc-forced-aligner",
+    "faster-whisper",
 ]
-# Apple-Silicon ASR runtime (non-torch, isolates the ASR from the torch conflict).
+# Apple-Silicon transcription accelerator (non-torch). Optional on top of [ml].
 mlx = ["mlx-whisper"]
-# Portable ASR runtime (CPU int8) when not on Apple Silicon.
-faster = ["faster-whisper"]
 # Opt-in only, for the M5 aligner bake-off. Aggressively version-pinned — kept isolated.
 whisperx = ["whisperx"]
 # Optional dedicated language-ID model.
@@ -73,6 +73,9 @@ module = [
     "speechbrain", "speechbrain.*",
 ]
 ignore_missing_imports = true
+# Treat these as opaque whether or not they're installed, so the strict gate is identical
+# in CI (no ML) and locally (ML installed) and never trips on a third-party lib's own types.
+follow_imports = "skip"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

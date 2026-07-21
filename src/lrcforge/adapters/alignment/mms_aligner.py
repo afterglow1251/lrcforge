@@ -70,7 +70,7 @@ class MmsForcedAligner:
             segments, scores, blank_id = get_alignments(emissions, tokens_starred, tokenizer)
             spans = get_spans(tokens_starred, segments, blank_id)
             word_ts: Sequence[_WordTs] = postprocess_results(text_starred, spans, stride, scores)
-        except (RuntimeError, OSError, ValueError, KeyError) as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, ImportError) as exc:
             raise AlignmentError(f"alignment failed for {stem.audio.path}: {exc}") from exc
 
         flat = [

@@ -21,6 +21,6 @@ class MlxWhisperLyricsProvider:
                 str(stem.audio.path), path_or_hf_repo=self._model_repo, language=lang
             )
             segments = result["segments"]
-        except (RuntimeError, OSError, ValueError, KeyError) as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, ImportError) as exc:
             raise TranscriptionError(f"transcription failed for {stem.audio.path}: {exc}") from exc
         return segments_to_draft(segments, lang=lang)
