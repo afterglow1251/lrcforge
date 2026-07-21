@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dishka import Provider, Scope, provide
 
+from lrcforge.adapters.alignment.mlx_aligner import MlxWhisperAligner
 from lrcforge.adapters.alignment.mms_aligner import MmsForcedAligner
 from lrcforge.adapters.alignment.whisper_aligner import WhisperForcedAligner
 from lrcforge.adapters.audio.soundfile_loader import SoundfileAudioLoader
@@ -106,6 +107,8 @@ class RealStagesProvider(Provider):
     @provide
     def aligner(self, settings: Settings) -> ForcedAligner:
         if settings.aligner == "whisper":
+            if settings.transcriber == "mlx":  # Apple GPU — much faster on Apple Silicon
+                return MlxWhisperAligner(model_repo=settings.mlx_model)
             return WhisperForcedAligner(model_name=settings.faster_model, device=settings.device)
         if settings.aligner == "mms":
             return MmsForcedAligner(device=settings.device)
