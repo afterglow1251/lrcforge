@@ -62,16 +62,14 @@ files = ["src", "tests"]
 [[tool.mypy.overrides]]
 module = [
     "soundfile",
-    "torch",
-    "torchaudio",
-    "demucs",
-    "demucs.*",
-    "mlx_whisper",
-    "faster_whisper",
-    "ctc_forced_aligner",
-    "whisperx",
-    "speechbrain",
-    "speechbrain.*",
+    "torch", "torch.*",
+    "torchaudio", "torchaudio.*",
+    "demucs", "demucs.*",
+    "mlx_whisper", "mlx_whisper.*",
+    "faster_whisper", "faster_whisper.*",
+    "ctc_forced_aligner", "ctc_forced_aligner.*",
+    "whisperx", "whisperx.*",
+    "speechbrain", "speechbrain.*",
 ]
 ignore_missing_imports = true
 
@@ -115,4 +113,13 @@ layers = [
 name = "Domain, ports and pipeline stay free of ML/web frameworks"
 type = "forbidden"
 source_modules = ["lrcforge.domain", "lrcforge.ports", "lrcforge.pipeline"]
-forbidden_modules = ["torch", "torchaudio", "demucs", "mlx_whisper", "whisperx", "fastapi"]
+forbidden_modules = [
+    "torch",
+    "torchaudio",
+    "demucs",
+    "mlx_whisper",
+    "faster_whisper",
+    "ctc_forced_aligner",
+    "whisperx",
+    "fastapi",
+]
